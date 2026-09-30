@@ -10,7 +10,8 @@
 # `paperclipai auth bootstrap-ceo` CLI — a shell step a template deployer does
 # not have. The wrapper below mints that invite at boot and prints it to the
 # Railway deploy log, which only the project's own members can read.
-FROM ghcr.io/paperclipai/paperclip:latest
+# Keep the existing Railway deployment's base image while applying this fix.
+FROM ghcr.io/paperclipai/paperclip@sha256:a02ac35ac41df911af477422ea0e781cf41d2b2c600c66f0a5ac9d8c63f52c2c
 
 # The upstream ENTRYPOINT (docker-entrypoint.sh) still runs first, as root: it
 # chowns $PAPERCLIP_HOME — which on Railway is a volume that arrives root-owned
@@ -19,6 +20,11 @@ FROM ghcr.io/paperclipai/paperclip:latest
 # start command: a start command replaces the ENTRYPOINT, skipping the chown
 # and the privilege drop.
 USER root
+
+# Patch only the Slack MCP catalog entry until upstream PR #13954 ships.
+COPY scripts/fix-slack-mcp-oauth.mjs /tmp/fix-slack-mcp-oauth.mjs
+RUN node /tmp/fix-slack-mcp-oauth.mjs \
+  && rm /tmp/fix-slack-mcp-oauth.mjs
 
 # Both files live under /app/server so that Node resolves `@paperclipai/db` and
 # `drizzle-orm` through server/node_modules, the same way the server does.
